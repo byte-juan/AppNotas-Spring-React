@@ -17,8 +17,8 @@ import lombok.NoArgsConstructor;
 @Table(name = "notas") 
 public class Nota {
     @Id 
-    @GeneratedValue (strategy = GenerationType.IDENTITY)
-    private long id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id; // <--- Cambia 'long' por 'Long' (objeto)
 
     @Column(nullable = false)
     private String titulo;
