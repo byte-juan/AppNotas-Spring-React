@@ -1,0 +1,82 @@
+
+name: Desplegar AppNotas en AWS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: notasapp/package-lock.json
+
+      - name: Compilar Spring Boot
+        run: |
+          chmod +x notas/mvnw
+          cd notas
+          ./mvnw clean package -DskipTests
+
+      - name: Construir React
+        run: |
+          cd notasapp
+          npm ci
+          npm run build
+
+      - name: Preparar SSH
+        env:
+          AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$AWS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$AWS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Enviar archivos a AWS
+        env:
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+          AWS_USER: ${{ secrets.AWS_USER }}
+        run: |
+          JAR=$(find notas/target -maxdepth 1 -type f -name '*.jar' ! -name '*.original' | head -n 1)
+          test -n "$JAR"
+          scp -i ~/.ssh/deploy_key "$JAR" "$AWS_USER@$AWS_HOST:/home/ubuntu/notas.jar.new"
+          scp -i ~/.ssh/deploy_key -r notasapp/dist/. "$AWS_USER@$AWS_HOST:/home/ubuntu/frontend/"
+
+      
+      - name: Activar despliegue en AWS
+        env:
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+          AWS_USER: ${{ secrets.AWS_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$AWS_USER@$AWS_HOST" '
+            set -e
+            test -f /home/ubuntu/notas.jar.new
+            cp -a /home/ubuntu/frontend/. /var/www/html/
+            mv /home/ubuntu/notas.jar.new /home/ubuntu/app/notas.jar
+            sudo systemctl restart notas
+            systemctl is-active --quiet notas
+          '
+
