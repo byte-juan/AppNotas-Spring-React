@@ -16,7 +16,7 @@ function App() {
 
   const fetchNotas = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/notas')
+      const response = await fetch('/api/notas')
       const notasData = await response.json();
       setNotas(notasData)
     } catch (error) {
@@ -31,7 +31,7 @@ function App() {
 
     try {
       if (editandoId) {
-        const res = await fetch(`http://localhost:8080/api/notas/${editandoId}`, {
+        const res = await fetch(`/api/notas/${editandoId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -49,7 +49,7 @@ function App() {
         setEditandoId(null);
 
       } else {
-        const res = await fetch('http://localhost:8080/api/notas', {
+        const res = await fetch('/api/notas', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -77,7 +77,7 @@ function App() {
   
   const eliminarNota = async (id) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/notas/${id}`, {
+      const res = await fetch(`/api/notas/${id}`, {
         method: 'DELETE'
       });
 
